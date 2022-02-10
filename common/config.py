@@ -1,8 +1,5 @@
 import configparser
 from pyspark import SparkConf
-from common.utils import get_decodes_string, decode_pattern
-
-Encryption_key = "Encrypted"
 
 
 def get_config_parser():
@@ -14,9 +11,8 @@ def get_config_parser():
 def get_spark_app_config():
     spark_conf = SparkConf()
     config = get_config_parser()
-    # base64.decodestring()
+ #base64.decodestring()
     for (key, val) in config.items("SPARK_APP_CONFIGS"):
-        val = get_decodes_string(val, decode_pattern) if (Encryption_key in val) else val
         spark_conf.set(key, val)
     return spark_conf
 
@@ -25,9 +21,15 @@ def get_db_config():
     config = get_config_parser()
     db_properties = {}
     for (key, val) in config.items("PG_DB_CONFIGS"):
-        val = get_decodes_string(val, decode_pattern) if (Encryption_key in val) else val
         db_properties[key] = val
     return db_properties
+
+
+'''
+spark.jars = drivers/postgresql-42.3.2.jar ,drivers/mongo-spark-connector_2.12-3.0.1.jar
+spark.driver.extraClassPath =drivers/*
+spark.executor.extraClassPath =drivers/*
+'''
 
 
 ######$

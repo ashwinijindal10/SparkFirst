@@ -1,7 +1,8 @@
 from pyspark import SparkContext
 import collections
-from lib.logger import Log4j
+from common.logger import Log4j
 from lib.config import *
+from common.utils import *
 
 from pyspark.sql import SparkSession
 
@@ -12,7 +13,6 @@ logger: Log4j = None
 
 def init():
     global spark, logger
-
     conf = get_spark_app_config()
     spark = SparkSession \
         .builder \
@@ -22,28 +22,21 @@ def init():
 
 
 def testSpark():
-    result_df = spark.read.text(file_path)
-    logger.info("spark started")
-    result_df.show()
-    spark.stop()
-
-
-def setupSpark():
-    config = SparkConf().setMaster(None).setAppName("test")
-    sc = SparkContext(config)
-    lines = sc.textFile(file_path)
-    ratings = lines.map(lambda x: x.split()[2])
-    result = ratings.countByValue()
-    sortedResult = collections.OrderedDict(result.items())
-    for key, value in sortedResult.items():
-        print(f"{key} : {value}")
-
-
-def testSpark2():
     db_properties = get_db_config()
-    _select_sql = "(select * from users) as users"
-    df_select = spark.read.jdbc(url=db_properties["url"],  properties=db_properties, table =_select_sql)
-    df_select.write.format("mongo").mode("append") \
+    spark.sql("CREATE DATABASE IF NOT EXISTS STAGING_DB ")
+    spark.catalog.setCurrentDatabase("STAGING_DB")
+    #emailId,phoneNo,password
+    _select_sql = "(select * from users) as userinfo"
+    df_select = spark.read.jdbc(url=db_properties["url"], properties=db_properties, table=_select_sql)
+
+    df_select.write.mode("overwrite").saveAsTable("user_data")
+
+    logger.info(spark.catalog.listTables("STAGING_DB"))
+
+    df_select.createOrReplaceTempView("temp_users")
+    result = spark.sql("select emailId, password from temp_users")
+
+    result.write.format("mongo").mode("overwrite") \
         .option("database", "myFirstDatabase") \
         .option("collection", "test") \
         .save()
@@ -51,4 +44,5 @@ def testSpark2():
 
 if __name__ == '__main__':
     init()
-    testSpark2()
+    testSpark()
+    #p#rint(get_decodes_string("this is <Encrypted MTIzNDUx> and this is not <Encrypted MTIzNDUx>",decode_pattern))
